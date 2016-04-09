@@ -1,12 +1,6 @@
-# grid approx for water example
-w = 6; n = 9
-p_grid = seq(from = 0, to = 1, length.out = 100)
-posterior = dbinom(w, n, p_grid)dunif(p_grid, 0, 1)
-posterior = posterior / sum(posterior)
-dens(posterior)
+library(rethinking)
 
 # estimate mu and sigma for height data
-library(rethinking)
 data("Howell1")
 d = Howell1
 
@@ -32,8 +26,8 @@ prior_h = rnorm(n, sample_mu, sample_sigma)
 dens(prior_h)
 
 # grid approx
-mu.list = seq(from=140, to=160, length.out=2000)
-sigma.list = seq(from=4, to=9, length.out=2000)
+mu.list = seq(from=140, to=160, length.out=1000)
+sigma.list = seq(from=4, to=9, length.out=1000)
 post = expand.grid(mu=mu.list, sigma=sigma.list)
 post$LL = sapply(1:nrow(post), function(i) sum(dnorm(
                 d2$height,
@@ -183,3 +177,30 @@ filter_to_n_obs_and_plot(20)
 filter_to_n_obs_and_plot(50)
 filter_to_n_obs_and_plot(150)
 filter_to_n_obs_and_plot(length(d2$weight))
+
+# plotting regression intervals and contours - i.e., a more common way of 
+# showing the uncertainty in the a and b posteriors than the cloud of 
+# regression lines previously
+post = extract.samples(m4.3)
+
+# calc distribution of mu values given x-axis/weight value of 50kg
+# this dist - say, the 89% HPDI - gives us the range of the interval at the
+# specific x-axis value of 50
+mu_at_50 = post$a + post$b * 50
+dens(mu_at_50, col=rangi2, lwd=2, xlab="mu|weight=50", show.HPDI = 0.89)
+HPDI(mu_at_50, prob=0.89)
+
+# we want to calc dist of mu at _each_ x-axis value, not just 50kg
+# we can then use all of the values to draw the interval for the entire range
+# of x-axis values
+
+# we use the link function which, by default, generates a matrix that has 1000
+# rows (the default number of random samples) and 352 columns (one for each value
+# in the source data d2). each column is 1000 values of mu that are generated as 
+# a result of the weight value for that person (since weight is used to define
+# mu in the model) and the particular value of a and b for each of the 1000 samples.
+mu = link(m4.3)
+str(mu)
+
+# to draw the intervals we want something a bit different than the default return
+# from the link function: we want 
