@@ -237,4 +237,93 @@ shade(mu.HPDI, weight.seq)
 
 # the code above shows the prediction interval for the _average height_, mu; we also want to 
 # generate intervals for the actual heights
-# TODO start up again at the top of p108
+sim.height = sim(m4.3, data=list(weight=weight.seq), n=1e4) # 1e4 samples smooths out the PI interval
+str(sim.height)
+# so, we have a 1000x46 matrix, with a column of 1000 heights for each weight value
+
+# and then calc the 89% interval for each weight value
+height.PI = apply(sim.height, 2, PI, prob=0.89)
+
+# plot raw data, then MAP line, then HDPI for line/mean mu, and finally PI value for simulated heights
+plot(height ~ weight, d2, col=col.alpha(rangi2, 0.5))
+lines(weight.seq, mu.mean)
+shade(mu.HPDI, weight.seq)
+shade(height.PI, weight.seq)
+
+
+# finish up w/ an intro to polynomial regression - now we'll use all observations, not just those of adults
+d = Howell1
+str(d)
+plot(height ~ weight, data=d)
+
+# standardize predictor to z-score representation, mainly to avoid numerical glitches that can come
+# from very large numbers (which we can get when we square or cube)
+d$weight.s = (d$weight - mean(d$weight)) / sd(d$weight)
+
+# a parabolic model is almost identical to the non-polynomial model - we just add a square term to the
+# calculation of mu
+d$weight.s2 = d$weight.s ^ 2
+m4.5 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b1*weight.s + b2*weight.s2,
+    a ~ dnorm(178, 100),
+    b1 ~ dnorm(0, 10),
+    b2 ~ dnorm(0, 10),
+    sigma ~ dunif(0, 50)
+  ), data=d)
+precis(m4.5)
+
+# it's harder to interpret especially the non-intercept coefficients a, b1, and b2, so we need to plot
+weight.seq = seq(from=-2.2, to=2, length.out = 30)
+pred_dat = list(weight.s = weight.seq, weight.s2 = weight.seq ^ 2)
+mu = link(m4.5, data=pred_dat)
+mu.mean = apply(mu, 2, mean)
+mu.PI = apply(mu, 2, PI, prob=0.89)
+sim.height = sim(m4.5, data=pred_dat)
+height.PI = apply(sim.height, 2, PI, prob=0.89)
+
+plot(height ~ weight.s, data=d, col=col.alpha(rangi2, 0.5))
+lines(weight.seq, mu.mean)
+shade(mu.PI, weight.seq)
+shade(height.PI, weight.seq)
+
+# and for fun, try a cubic regression/higher-order polynomial using weight
+d$weight.s3 = d$weight.s ^ 3
+m4.6 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b1*weight.s + b2*weight.s2 + b3*weight.s3,
+    a ~ dnorm(178, 100),
+    b1 ~ dnorm(0, 10),
+    b2 ~ dnorm(0, 10),
+    b3 ~ dnorm(0, 10),
+    sigma ~ dunif(0, 50)
+  ), data=d)
+precis(m4.6)
+
+# it's harder to interpret especially the non-intercept coefficients a, b1, and b2, so we need to plot
+weight.seq = seq(from=-2.2, to=2, length.out = 30)
+pred_dat = list(weight.s = weight.seq, weight.s2 = weight.seq ^ 2, weight.s3 = weight.seq ^ 3)
+mu = link(m4.6, data=pred_dat)
+mu.mean = apply(mu, 2, mean)
+mu.PI = apply(mu, 2, PI, prob=0.89)
+sim.height = sim(m4.6, data=pred_dat)
+height.PI = apply(sim.height, 2, PI, prob=0.89)
+
+plot(height ~ weight.s, data=d, col=col.alpha(rangi2, 0.5))
+lines(weight.seq, mu.mean)
+shade(mu.PI, weight.seq)
+shade(height.PI, weight.seq)
+
+# and one way to convert standardized z-scores back to the natural scale: plot w/o any axis labels and 
+# then manually set the axis labels using the natural values - this lets you fit the model and do 
+# all of the plotting calculations (for intervals) in standardized units and then plot the estimates
+# using the original scale; xaxt="n" turns off the horizontal axis
+plot(height ~ weight.s, d, col=col.alpha(rangi2, 0.5), xaxt="n")
+lines(weight.seq, mu.mean)
+shade(mu.PI, weight.seq)
+shade(height.PI, weight.seq)
+at = c(-2, -1, 0, 1, 2)
+labels = at*sd(d$weight) + mean(d$weight)
+axis(side=1, at=at, labels=round(labels,1))
