@@ -203,4 +203,38 @@ mu = link(m4.3)
 str(mu)
 
 # to draw the intervals we want something a bit different than the default return
-# from the link function: we want 
+# from the link function: we want a distribution of mu for each value of weight shown 
+# on the x-axis; to get thsi we feed link different data using the 'data' param (the 
+# doc says 'data' is an 'optional list of data to compute predictions over, when missing
+# uses data found inside the fit object' - i.e., it uses each observation in the source data)
+weight.seq = seq(from=25, to=70, by=1)
+mu = link(m4.3, data=data.frame(weight=weight.seq))
+str(mu)
+# so, mu now has 1000 samples (of mean height) for each value of 'weight' from 25 to 70
+# here's all 1000 values for the first weight value of 25
+mu[,1]
+# and all 1000 values for the last weight value of 75
+mu[,46]
+
+# use type="n" to hide the raw data - i.e., to just get the axes
+# then plot each of the 1000 values we have for each of the 46 x-axis values
+plot(height ~ weight, d2, type="n")
+for (i in 1:1000)
+  points(weight.seq, mu[i,], pch=16, col=col.alpha(rangi2, 0.1))
+
+# summarize the distribution of mu - here we compute the mean of each column (dimension = '2')
+# of the matrix mu; this gives us a vector of size 46 for mu.mean and 46*2 for mu.HPDI
+mu.mean = apply(mu, 2, mean)
+mu.HPDI = apply(mu, 2, HPDI, prob=0.89)
+
+# and plot
+# data
+plot(height ~ weight, data=d2, col=col.alpha(rangi2, 0.5))
+# MAP line
+lines(weight.seq, mu.mean)
+# shaded region for the 89% HPDI
+shade(mu.HPDI, weight.seq)
+
+# the code above shows the prediction interval for the _average height_, mu; we also want to 
+# generate intervals for the actual heights
+# TODO start up again at the top of p108
