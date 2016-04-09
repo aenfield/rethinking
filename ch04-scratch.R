@@ -105,3 +105,81 @@ library(MASS)
 mvrnorm_post = mvrnorm(n=1e4, mu=coef(m4.1), Sigma=vcov(m4.1))
 head(post)
 precis(post)
+
+# work now w/ height and weight - 'adding a predictor'
+plot(d2$height ~ d2$weight)
+
+m4.3 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b*weight,
+    a ~ dnorm(156, 100),
+    b ~ dnorm(0, 10),
+    sigma ~ dunif(0, 50)
+  ), 
+  data=d2
+)
+precis(m4.3, corr=TRUE)
+
+# a and b are almost exactly negatively correlated w/ each other (-0.99) - ok, here as it just means
+# that these params carry the same info (change one and the other changes to match it); it can make
+# it difficult to fit more complicated models to data, so we can do things to help, like 'centering'...
+
+# centering is subtracting the mean of a variable from each value. for weight...
+d2$weight.c = d2$weight - mean(d2$weight)
+
+m4.4 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + b*weight.c,
+    a ~ dnorm(178, 100),
+    b ~ dnorm(0, 10),
+    sigma ~ dunif(0, 50)
+  ), 
+  data = d2
+)
+precis(m4.4, corr=TRUE)
+mean(d2$weight.c)
+# as p100 discusses, the intercept - in addition to meaning 'the expected value of the outcome variable,
+# when the predictor is equal to zero' - also means 'the expected value of the outcome, when the
+# predictor is at its average value'. 
+
+# plot posterior inference against the data - is this a 'posterior predictive check' per DBDA?
+# start w/ superimposing the MAP values for mean height over the actual data
+plot(height ~ weight, data=d2)
+abline(a = coef(m4.3)["a"], b=coef(m4.3)["b"])
+
+# the MAP line is 'just the posterior mean - the most plausible line in the infinite universe of lines
+# that have been considered in the posterior distribution'. That is, the line doesn't convey uncertainty -
+# we could have many lines very much like the MAP line, or very few. Let's sample a bunch of lines
+# (that is, values of a and b) and plot them.
+# With fewer data points our estimates will be wider, so define a function that runs the model on a 
+# specified number of data points and then plots a representative sample of the resulting lines.
+filter_to_n_obs_and_plot = function(N) {
+  dN = d2[1:N,]
+  mN = map(
+    alist(
+      height ~ dnorm(mu, sigma),
+      mu <- a + b*weight,
+      a ~ dnorm(156, 100),
+      b ~ dnorm(0, 10),
+      sigma ~ dunif(0, 50)
+    ), 
+    data=dN
+  )
+  # extract 20 representative samples
+  post = extract.samples(mN, n=20)
+  # display raw data and sample size
+  plot(dN$weight, dN$height,
+       xlim=range(d2$weight), ylim=range(d2$height),
+       col=rangi2, xlab="weight", ylab="height")
+  mtext(concat("N = ", N))
+  # plot the lines
+  for (i in 1:20)
+    abline(a = post$a[i], b=post$b[i], col=col.alpha("black", 0.3))
+}
+filter_to_n_obs_and_plot(10)
+filter_to_n_obs_and_plot(20)
+filter_to_n_obs_and_plot(50)
+filter_to_n_obs_and_plot(150)
+filter_to_n_obs_and_plot(length(d2$weight))
