@@ -55,4 +55,44 @@ plot(precis(m5.3))
 # credible interval for bR is small/straddles zero, while the coefficient for bA is definitely
 # negative and doesn't come close to zero.
 
-# START on p126
+# predictor residual plots
+# shows 'the average prediction error when all other variables are used to model a predictor of 
+# interest'. first we compute predicted values for a given predictor by 'using the other predictor(s)
+# to model it' - for ex, we use median age at marriage to predict the marriage rate. Then, we
+# compute residuals by subtracting the actual/observed marriage rate from the predicted rate (predicted
+# based on the age at marriage).
+m5.4 = map(
+  alist(
+    Marriage.s ~ dnorm(mu, sigma),
+    mu <- a + b*MedianAgeMarriage.s,
+    a ~ dnorm(0, 10),
+    b ~ dnorm(0, 1),
+    sigma ~ dunif(0, 10)
+  ), data=d
+)
+precis(m5.4)
+
+# compute expected value at MAP, for each state
+mu = coef(m5.4)['a'] + coef(m5.4)['b']*d$MedianAgeMarriage.s
+# and then compute residual for each state
+m.resid = d$Marriage.s - mu
+
+plot(Marriage.s ~ MedianAgeMarriage.s, d, col=rangi2)
+abline(m5.4)
+# plot residual for each state
+for (i in 1:length(m.resid)) {
+  x = d$MedianAgeMarriage.s[i]  # x location of line segment
+  y = d$Marriage.s[i] # observed endpoint of line segment
+  # draw the line segment
+  lines(c(x,x), c(mu[i],y), lwd=0.5, col=col.alpha("black", 0.7))
+}
+
+# there's more on these plots on p126 and p127, including code that plots the residuals against
+# the overall predicted variable (divorce). these plots then show the effect of each predictor having
+# statistically "controlled" for all of the other predictors. all that said, this is manual - we get
+# the same thing for free if we just do multivariate regression.
+
+# skipping for now at least the 5.1.3.2. counterfactual plot section
+
+# 5.1.3.3. posterior predictive plots
+# TBD p131
