@@ -308,4 +308,255 @@ lines(np.seq, mu.PI[2,], lty=2)
 
 # the top of p141 has an overthinking that simulates another masking relationship
 
-# TODO start at bottom of p141, 'When adding variables hurts' 
+# 'When adding variables hurts' 
+
+# experiment with simulated leg lengths and predicting height
+N = 100
+height = rnorm(N,10,2)
+leg_prop = runif(N,0.4,0.5)
+leg_left = leg_prop*height + rnorm(N,0,0.2)
+leg_right = leg_prop*height + rnorm(N,0,0.2)
+d = data.frame(height, leg_left, leg_right)
+
+# we'd expect, absent multi-collinearity, for each coefficient to have a value of avg height - 10 - 
+# divided by 45% of the avg height - 4.5, or 2.2.
+
+m5.8 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + bl*leg_left + br*leg_right,
+    a ~ dnorm(10,100),
+    bl ~ dnorm(2,10),
+    br ~ dnorm(2,10),
+    sigma ~ dunif(0,10)
+  ), data=d
+)
+precis(m5.8)
+plot(precis(m5.8))
+
+# what's the bivariate posterior distribution for bl and br?
+post = extract.samples(m5.8)
+plot(bl ~ br, post, col=col.alpha(rangi2,0.1), pch=16)
+
+# when br is large (and it can be large), bl has to be small, and vice-versa; since there are plausible
+# values of br (and bl) that are large, and small, the posterior distribution for these two variables
+# will be wide - for example, each CI will include both small and large values.
+
+# another way to think about this is that rather than having a linear model with two different predictors
+# and two different coefficients, you actually have a model/equation with two terms and two coefficients
+# but only one actualy predictor - i.e., you have mu = alpha + b1x + b2x, which is the same as 
+# mu = alpha + (b1+b2)x.
+
+# we can actually find what we really want (and what we'd get if we only included a single leg) by 
+# summing bl and br
+sum_blbr = post$bl + post$br
+dens(sum_blbr, col=rangi2, lwd=2, xlab="sum of bl and br")
+mean(sum_blbr)
+sd(sum_blbr)
+
+# and if we just included a single predictor
+m5.9 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + bl*leg_left,
+    a ~ dnorm(10,100),
+    bl ~ dnorm(2,10),
+    sigma ~ dunif(0,10)
+  ), data=d
+)
+precis(m5.9)
+plot(precis(m5.9))
+
+# the mean and SD for bl here matches what we get when we sum bl+br above
+
+# to summarize: the original model with both collinear predictors still predicts just as well as a
+# model with only a single predictor (that carries the same info) - what we lose w/ the collinear
+# predictors is the ability to infer anything about the relative importance of the two leg length
+# variables.
+
+# there's a real-world example of multi-collinearity with the milk data on p145-p150.
+
+# the text on the bottom of p149 defines 'non-identifiability': a non-identifiable parameter, the 
+# structure of the data and the model do not make it possible to estimate the parameter's value (well).
+# for ex, when the available data don't contain much info about a parameter, you'll - as expected -
+# get a very wide posterior distribution. there's more in these few paragraphs, which are good.
+
+# post-treatment bias
+# be careful to not include as predictors variables that are 'post-treatment' variables - those that
+# are affected by other predictors. for ex, suppose we want to investigate the impact of soil treatments
+# that reduce fungus on the height of plants. we SHOULD NOT include 'fungus yes/no' as a predictor
+# because fungus changes as a result of the treatments (in theory) - instead, we should just include
+# the treatments and the height. (this is harder to see in observational studies than in experiments
+# like that simulated below.)
+
+# let's simulate the above example
+N = 100
+h0 = rnorm(N,10,2) # initial height
+# assign to treatments and simulate growth
+treatment = rep(0:1, each=N/2)
+fungus = rbinom(N, size=1, prob=0.5 - treatment*0.4) # existence of fungus: 50% no treatment, 10% with
+h1 = h0 + rnorm(N, 5 - 3*fungus)
+d = data.frame(h0, h1, treatment, fungus)
+
+# first try, incorrectly - post-treatment bias - with fungus as a predictor
+m5.13 = map(
+  alist(
+    h1 ~ dnorm(mu, sigma),
+    mu <- a + bh*h0 + bt*treatment + bf*fungus,
+    a ~ dnorm(0,100),
+    c(bh,bt,bf) ~ dnorm(0,10), # cool way to define multiple priors at the same time
+    sigma ~ dunif(0,10)
+  ), data=d
+)
+precis(m5.13)
+
+# we see both fungus and treatment as having a _negative_ effect on height... we know treatment should
+# have a postive effect because we built the simulated data to show this. what's happened is that w/ the
+# model above we're asking 'given that we know if a plant has fungus, does treatment matter?' and 'given
+# that we know a plant has been treated, does knowing if a plant has fungus matter?'. 
+# we should instead leave out fungus, since it's a post-treatment variable.
+m5.14 = map(
+  alist(
+    h1 ~ dnorm(mu, sigma),
+    mu <- a + bh*h0 + bt*treatment,
+    a ~ dnorm(0,100),
+    c(bh,bt) ~ dnorm(0,10), # cool way to define multiple priors at the same time
+    sigma ~ dunif(0,10)
+  ), data=d
+)
+precis(m5.14)
+# now the effect of treatment is positive, as we truly expect/know.
+
+
+# Categorical variables
+# binary categories
+data("Howell1")
+d = Howell1
+str(d)
+
+m5.15 = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- a + bm*male,
+    a ~ dnorm(178,100),
+    bm ~ dnorm(0,10),
+    sigma ~ dunif(0,50)
+  ), data=d
+)
+precis(m5.15)
+# so a is the mean height when you're a female, and a+bm is the avg height when you're a male
+
+# adding a+bm gives us the posterior mean of avg male height; to get the range/width of the posterior
+# you CANNOT just add the summary means and widths - because a and bm are correlated - so you instead
+# need to pull actual samples of heights and then calculate the width from the samples. working w/ 
+# samples automatically handles the correlation problem and works the same regardless of the degree
+# of correlation
+post = extract.samples(m5.15)
+mu.male = post$a + post$bm
+PI(mu.male)
+
+# you could also 're-parameterize' - build the same model w/ different parameters - and have separate
+# variables that hold the average male and female heights - note no intercept/a parameter
+m5.15b = map(
+  alist(
+    height ~ dnorm(mu, sigma),
+    mu <- af*(1-male) + am*male,
+    c(af,am) ~ dnorm(178,100),
+    sigma ~ dunif(0,50)
+  ), data=d
+)
+precis(m5.15b)
+
+# many categories
+data(milk)
+d = milk
+str(d)
+unique(d$clade)
+
+# create dummy vars, one for n-1 values for the clade factor
+(d$clade.NWM = ifelse(d$clade=='New World Monkey', 1, 0))
+(d$clade.OWM = ifelse(d$clade=='Old World Monkey', 1, 0))
+(d$clade.S = ifelse(d$clade=='Strepsirrhine', 1, 0))
+# we don't include one for 'Ape' because that'd create a non-identifiable model, I think because then
+# a/the intercept and clade.A would both be able to have the same effect and they'd trade off and both
+# potentially have high values (when the other's value is low) and vice versa; instead we just have the
+# intercept param that represents the Ape's milk energy.
+m5.16 = map(
+  alist(
+    kcal.per.g ~ dnorm(mu, sigma),
+    mu <- a + b.NWM*clade.NWM + b.OWM*clade.OWM + b.S*clade.S,
+    a ~ dnorm(0.6, 10),
+    c(b.NWM, b.OWM, b.S) ~ dnorm(0, 1),
+    sigma ~ dunif(0,10)
+  ), data=d
+)
+precis(m5.16)
+
+# since a is the avg milk energy for 'Ape' and the estimates for the other categories are the 
+# differences from apes, we need to use samples to get posterior distributions for the other classes
+post = extract.samples(m5.16)
+mu.ape = post$a
+mu.NWM = post$a + post$b.NWM
+mu.OWM = post$a + post$b.OWM
+mu.S = post$a + post$b.S
+
+# summarize using precis w/ a custom-created dataframe
+precis(data.frame(mu.ape, mu.NWM, mu.OWM, mu.S))
+
+# side note: the samples have all of the info about uncertainty, and so you can 'effectively 
+# re-parameterize' _after_ we've already fit the model. for ex, suppose we want the difference between
+# the two monkey groups - just subtract the estimated means using the samples
+diff.NWM.OWM = mu.NWM - mu.OWM
+# and here are the lower 95%, the median, and the upper 95% - this is posterior distribution for the 
+# difference between NWM and OWM - none of the uncertainty in the orig posterior is lost
+quantile(diff.NWM.OWM, probs=c(0.025, 0.5, 0.975))
+
+# there's a great 'differences and statistical significance' rethinking section at the bottom of p157:
+# about how you can/can't reason w/ 'significant' and 'not significant' variables - you have to 
+# compute a contrast/the difference and look at the distribution. it also makes cogently the point that
+# 'we found no difference' or 'no effect', which in actuality means that some parameter was not
+# significantly different from zero as evidence that the parameter IS zero - this is exactly 'accepting/
+# proving the null' and not something we can do.
+
+# i think i _could_ leave out the intercept param and replace it w/ an Ape-specific dummy var though
+# and i can... and then i don't need to use samples and manually calc the means and ranges for all 
+# four categories - the precis below matches the precis above
+(d$clade.A = ifelse(d$clade=='Ape', 1, 0))
+m5.16b = map(
+  alist(
+    kcal.per.g ~ dnorm(mu, sigma),
+    mu <- b.NWM*clade.NWM + b.OWM*clade.OWM + b.S*clade.S + b.A*clade.A,
+    c(b.NWM, b.OWM, b.S, b.A) ~ dnorm(0, 1),
+    sigma ~ dunif(0,10)
+  ), data=d
+)
+precis(m5.16b)
+
+# finally, see the 'unique intercepts' approach below that uses Stan index variables to do the same thing
+# as w/ my Ape example
+(d$clade_id = coerce_index(d$clade))
+
+m5.16_alt = map(
+  alist(
+    kcal.per.g ~ dnorm(mu, sigma),
+    mu <- a[clade_id],
+    a[clade_id] ~ dnorm(0.6, 10),
+    sigma ~ dunif(0, 10)
+  ), data=d
+)
+precis(m5.16_alt, depth=2) # depth required to show the index/vector parameters
+# yep - the results are the same as both of the different approaches above
+
+# finish up ch5 by using the OLS lm, and map formulas from lm
+# "Carl Friedrich Gauss himself invented OLS as a method of computing Bayesian MAP estimates"
+
+# see p159-p161 for a bunch of examples
+
+# glimmer function to translate lm's 'design formulas' to map-style formulas
+data(cars)
+formula = glimmer(dist ~ speed, data=cars)
+
+# seems like i should be able to immediately use the resulting formula to do a Bayesian MAP estimate, 
+# but the code below doesn't work... likely just need a quick glance (including at the glimmer docs) 
+m.mine = map(formula$f, data=f$d)
+precis(m.mine)
