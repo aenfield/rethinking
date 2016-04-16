@@ -556,7 +556,5 @@ precis(m5.16_alt, depth=2) # depth required to show the index/vector parameters
 data(cars)
 formula = glimmer(dist ~ speed, data=cars)
 
-# seems like i should be able to immediately use the resulting formula to do a Bayesian MAP estimate, 
-# but the code below doesn't work... likely just need a quick glance (including at the glimmer docs) 
-m.mine = map(formula$f, data=f$d)
+m.mine = map(formula$f, data=formula$d)
 precis(m.mine)
