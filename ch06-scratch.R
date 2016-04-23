@@ -50,4 +50,25 @@ WAIC(m6.14)
 
 (milk.models <- compare(m6.11, m6.12, m6.13, m6.14))
 
-plot(milk.models, SE=TRUE, dSE=TRUE)
+precis.plot(milk.models, SE=TRUE, dSE=TRUE)
+
+coeftab(m6.11, m6.12, m6.13, m6.14)
+plot(coeftab(m6.11, m6.12, m6.13, m6.14))
+
+
+# compute counterfactual predictions
+# neocortex from 0.5 to 0.8
+nc.seq = seq(from=0.5,to=0.8,length.out=30)
+d.predict = list(
+  kcal.per.g = rep(0,30), # empty outcome
+  neocortex = nc.seq,     # sequence of neocortex
+  mass = rep(4.5,30)      # average mass
+)
+pred.m6.14 = link(m6.14, data=d.predict)
+mu = apply(pred.m6.14, 2, mean)
+mu.PI = apply(pred.m6.14, 2, PI)
+
+plot(kcal.per.g ~ neocortex, d, col=rangi2)
+lines(nc.seq, mu, lty=2)
+lines(nc.seq, mu.PI[1,], lty=2)
+lines(nc.seq, mu.PI[2,], lty=2)
