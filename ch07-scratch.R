@@ -108,4 +108,37 @@ calc_and_plot_MAP_and_PI_range(dd, rugged.seq, mu.Africa, log_gdp ~ rugged)
 
 
 # including an interaction term DOES let the slope change dependent on country location
+m7.5 = map(
+  alist(
+    log_gdp ~ dnorm(mu, sigma),
+    mu <- a + gamma*rugged + bA*cont_africa,
+    gamma <- bR + bAR*cont_africa,
+    a ~ dnorm(8, 100),
+    bA ~ dnorm(0, 1),
+    bR ~ dnorm(0, 1),
+    bAR ~ dnorm(0, 1),
+    sigma ~ dunif(0, 10)
+  ), data=dd
+)
+precis(m7.5)
 
+# compare the new model w/ the interaction effect, using WAIC, w/ the previous two models
+compare(m7.3, m7.4, m7.5)
+# m7.5 - the new one - gets 97% of the weight; the 3% given to m7.4 'indicates that the 
+# posterior means for the slopes in m7.5 are a little overfit; the dSE in WAIC between the top
+# two models is almost the same as the difference itself: because we don't have a lot of
+# African countries, we don't have a lot of data to estimate the interaction
+
+# note that we don't need to explicitly define a 'gamma' variable on a separate line like
+# we did above; instead we can just put everything into a single mu line, like this
+# mu <- a + bR*rugged + bAR*rugged*cont_africa + bA*cont_africa,
+
+# plot both
+# first, African countries
+mu.Africa = link(m7.5, data=data.frame(cont_africa=1, rugged=rugged.seq))
+calc_and_plot_MAP_and_PI_range(dd[dd$cont_africa==1,], rugged.seq, mu.Africa, log_gdp ~ rugged)
+# and then non-African countries
+mu.NotAfrica = link(m7.5, data=data.frame(cont_africa=0, rugged=rugged.seq))
+calc_and_plot_MAP_and_PI_range(dd[dd$cont_africa==0,], rugged.seq, mu.NotAfrica, log_gdp ~ rugged)
+
+# start w/ 7.1.4.1 on p220
