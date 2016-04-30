@@ -214,3 +214,108 @@ lines(0:1, mu.ruggedlo.mean, lty=2)
 shade(mu.ruggedlo.PI, 0:1)
 lines(0:1, mu.ruggedhi.mean, lty=2, col=rangi2)
 shade(mu.ruggedhi.PI, 0:1, col=col.alpha(rangi2, 0.25))
+
+
+# 7.3 - continuous interactions, where in the intro he explains another reason that interaction
+# effects are difficult to interpret: continuous variable interactions are especially opaque
+# (the example above is easier to interpret because one of the variables is categorical)
+data("tulips")
+d = tulips
+str(d)
+
+# first, show that it doesn't work well w/o centering
+m7.6 = map(
+  alist(
+    blooms ~ dnorm(mu, sigma),
+    mu <- a + bW*water + bS*shade,
+    a ~ dnorm(0, 100),
+    bW ~ dnorm(0, 100),
+    bS ~ dnorm(0, 100),
+    sigma ~ dunif(0, 100)
+  ), data=d
+)
+m7.7 = map(
+  alist(
+    blooms ~ dnorm(mu, sigma),
+    mu <- a + bW*water + bS*shade + bWS*water*shade,
+    a ~ dnorm(0, 100),
+    bW ~ dnorm(0, 100),
+    bS ~ dnorm(0, 100),
+    bWS ~ dnorm(0, 100),
+    sigma ~ dunif(0, 100)
+  ), data=d
+)
+
+# fix by using a few of the (more) recommended options on p228: use a different optimization
+# method, and tell optim to search longer
+m7.6 = map(
+  alist(
+    blooms ~ dnorm(mu, sigma),
+    mu <- a + bW*water + bS*shade,
+    a ~ dnorm(0, 100),
+    bW ~ dnorm(0, 100),
+    bS ~ dnorm(0, 100),
+    sigma ~ dunif(0, 100)
+  ), 
+  data=d,
+  method="Nelder-Mead",
+  control=list(maxit=1e4)
+)
+m7.7 = map(
+  alist(
+    blooms ~ dnorm(mu, sigma),
+    mu <- a + bW*water + bS*shade + bWS*water*shade,
+    a ~ dnorm(0, 100),
+    bW ~ dnorm(0, 100),
+    bS ~ dnorm(0, 100),
+    bWS ~ dnorm(0, 100),
+    sigma ~ dunif(0, 100)
+  ), 
+  data=d,
+  method="Nelder-Mead",
+  control=list(maxit=1e4)
+)
+
+# we can't really interpret w/o plotting posterior predictions, but we'll still look at the #s
+coeftab(m7.6, m7.7)
+
+precis(m7.6)
+precis(m7.7)
+
+compare(m7.6, m7.7)
+
+# center and re-estimate, and see if/how that changes anything - this fixes the need for more
+# iterations and alternate optimization methods that we had to use above, and also makes it 
+# easier to interpret the estimates. centering here changes the values from 1-3 to -1 to 1.
+d$shade.c = d$shade - mean(d$shade)
+d$water.c = d$water - mean(d$water)
+
+m7.8 = map(
+  alist(
+    blooms ~ dnorm(mu, sigma),
+    mu <- a + bW*water.c + bS*shade.c,
+    a ~ dnorm(130, 100),
+    bW ~ dnorm(0, 100),
+    bS ~ dnorm(0, 100),
+    sigma ~ dunif(0, 100)
+  ), 
+  data=d,
+  start=list(a=mean(d$blooms), bW=0, bS=0, sigma=sd(d$blooms))
+)
+m7.9 = map(
+  alist(
+    blooms ~ dnorm(mu, sigma),
+    mu <- a + bW*water.c + bS*shade.c + bWS*water.c*shade.c,
+    a ~ dnorm(130, 100),
+    bW ~ dnorm(0, 100),
+    bS ~ dnorm(0, 100),
+    bWS ~ dnorm(0, 100),
+    sigma ~ dunif(0, 100)
+  ), 
+  data=d,
+  # provide better starting methods because flat priors here provide 'terrible' random
+  # starting locations (could also be better ? fixed i wonder by better priors?)
+  start=list(a=mean(d$blooms), bW=0, bS=0, bWS=0, sigma=sd(d$blooms))
+)
+
+coeftab(m7.8, m7.9)
