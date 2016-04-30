@@ -183,3 +183,34 @@ sum(diff < 0) / length(diff)
 # actually means
 
 # "Buridan's interaction" - symmetry of linear interaction
+# where above we were looking at the impact of ruggedness on GDP, depending on whether the 
+# country is in Africa, we can also - equally validly - look at the impact of being in/out of
+# Africa on GDP, depending on ruggedness
+
+# we'll graph for the min and max values of ruggedness, as the extremes through which other
+# values of ruggedness lie.
+q.rugged = range(dd$rugged)
+
+# compute lines and CIs
+mu.ruggedlo = link(m7.5, data=data.frame(rugged=q.rugged[1],cont_africa=0:1))
+mu.ruggedlo.mean = apply(mu.ruggedlo, 2, mean)
+mu.ruggedlo.PI = apply(mu.ruggedlo, 2, PI)
+
+mu.ruggedhi = link(m7.5, data=data.frame(rugged=q.rugged[2],cont_africa=0:1))
+mu.ruggedhi.mean = apply(mu.ruggedhi, 2, mean)
+mu.ruggedhi.PI = apply(mu.ruggedhi, 2, PI)
+
+# split points at median
+med.r = median(dd$rugged)
+ox = ifelse(dd$rugged > med.r, 0.05, -0.05)
+plot(dd$cont_africa + ox, log(dd$rgdppc_2000), 
+     col=ifelse(dd$rugged > med.r, rangi2, "black"), 
+     xlim=c(-0.25, 1.25), xaxt="n", ylab="log GDP year 2000",
+     xlab="Continent")
+
+axis(1, at=c(0,1), labels=c("other","Africa"))
+
+lines(0:1, mu.ruggedlo.mean, lty=2)
+shade(mu.ruggedlo.PI, 0:1)
+lines(0:1, mu.ruggedhi.mean, lty=2, col=rangi2)
+shade(mu.ruggedhi.PI, 0:1, col=col.alpha(rangi2, 0.25))
