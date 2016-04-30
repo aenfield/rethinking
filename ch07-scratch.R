@@ -141,4 +141,45 @@ calc_and_plot_MAP_and_PI_range(dd[dd$cont_africa==1,], rugged.seq, mu.Africa, lo
 mu.NotAfrica = link(m7.5, data=data.frame(cont_africa=0, rugged=rugged.seq))
 calc_and_plot_MAP_and_PI_range(dd[dd$cont_africa==0,], rugged.seq, mu.NotAfrica, log_gdp ~ rugged)
 
-# start w/ 7.1.4.1 on p220
+# interactions are hard to interpret from just a table of means and std devs - instead it's
+# better to plot implied predictions
+# p221: "to get some idea of the uncertainty around gamma values, we need to use the whole
+# posterior - since gamma depends on estimated parameters, and those parameters have a 
+# posterior distribution, gamma must also have a posterior distribution."
+# to calc the posterior distribution of gamma, either do calculus, or just use samples
+# from the posterior:
+post = extract.samples(m7.5)
+gamma.Africa = post$bR + post$bAR*1
+gamma.NotAfrica = post$bR + post$bAR*0
+
+mean(gamma.Africa)
+mean(gamma.NotAfrica)
+
+# the above should be close to identical to the MAP values - i think this is what we'd calc
+# if we figured the mean of bR and mean of bAR
+precis(m7.5)
+# since i don't remember off hand how to get data out of a precis result, I'll just calc manually
+# Africa
+-0.18 + 0.35*1
+# not Africa
+-0.18 + 0.35*0
+# yep - they match
+
+# but w/ the data from the samples, we actually have full posteriors and so can show the
+# uncertainty, not just the MAP values - don't forget that these graphs are the marginal
+# distributions - the overlap/relationship between the two doesn't hold, for that you typically
+# need to actually calculate the differene using samples, and graph THAT resulting 
+# distribution, as below these two lines...
+dens(gamma.Africa, xlim=c(-0.5, 0.6), ylim=c(0, 5.5), xlab="gamma", col=rangi2)
+dens(gamma.NotAfrica, add=TRUE)
+
+# what's the probability, according to this model and data, that the slope within Africa is
+# less than the slope outside Africa? We can't do this via the marginal distributions - instead
+# we calculate the difference between the slopes for each sample in the posterior and use or 
+# graph THAT distribution
+diff = gamma.Africa - gamma.NotAfrica
+sum(diff < 0) / length(diff)
+# see the rethinking at the bottom of p222 for a good explanation of what this 0.003 probability
+# actually means
+
+# "Buridan's interaction" - symmetry of linear interaction
