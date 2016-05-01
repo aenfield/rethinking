@@ -369,3 +369,9 @@ for (w in -1:1) {
 }
 
 # the text on p234 and the top of p235 does a great job of explaining what these plots mean
+
+# i didn't type in the few exemplary short bits of code/formulas, but 7.4 talks about how to
+# use model formulas w/ 'lm' (and then of course flat priors), including that with interactions
+# you just need to specify the highest number of terms and the lower numbers of terms are 
+# assumed, how to override this default, and how to look at the way that lm expands the design
+# formula
