@@ -319,3 +319,53 @@ m7.9 = map(
 )
 
 coeftab(m7.8, m7.9)
+
+# using MAP values (2, i think), here's the effect of increasing water by one unit
+# w/ 7.7 we have to use all of the parameters, since the mean MAP is non-zero for all
+k = coef(m7.7)
+k
+k[1] + k[2]*2 + k[3]*2 + k[4]*2*2
+
+# for 7.8, the MAP value is zero, so we can leave out all of the non-intercept terms
+# and get the same value
+k = coef(m7.9)
+k
+k[1] # don't need k[2]*0 + k[3]*0 + k[4]*0*0
+ 
+# as the text says in the middle of p232, interpreting the bWS term, which is negative,
+# is hard to do, so we plot...
+
+# 7.3.4
+# in the past, when we plotted the model predictions as a function of any one predictor,
+# we could hold the other predicts constant at any value we liked, because we had no interactions.
+# now, with interactions, the effect of changing a predictor is affected by the values of the
+# other predictors. so, we'll plot a bunch of bivariate plots that each have different values 
+# for the 'un-viewed' variables.
+
+# in practice, here, we'll plot three triptychs each that has three plots. each plot of three
+# shows the bivariate relationship between shade and blooms, and each triptych, i think, will
+# show the three shade values for a different value of water - i.e., the first row shows the
+# reln between shade and blooms, holding water constant at -1, the second holding water 
+# constant at 0, and the third at 1.
+
+# a plot window with three plants in a single row
+par(mfrow=c(1,3)) # one row, three columns
+
+# loop over values of water.c and plot predictions
+# as below we see the values for the model w/ interactions - we can change m7.9 to m7.8 to 
+# see the values/predictions for the model w/o interactions (in the w/o interactions model we
+# see, as before, that the slope is the same for each value of water.c)
+shade.seq = -1:1
+for (w in -1:1) {
+  dt = d[d$water.c == w,]
+  plot(blooms ~ shade.c, data=dt, col=rangi2, main=paste("water.c =",w),
+       xaxp=c(-1,1,2), ylim=c(0,362), xlab="shade (centered)")
+  mu = link(m7.9, data=data.frame(water.c=w, shade.c=shade.seq))
+  mu.mean = apply(mu, 2, mean)
+  mu.PI = apply(mu, 2, PI, prob=0.97)
+  lines(shade.seq, mu.mean)
+  lines(shade.seq, mu.PI[1,], lty=2)
+  lines(shade.seq, mu.PI[2,], lty=2)
+}
+
+# the text on p234 and the top of p235 does a great job of explaining what these plots mean
