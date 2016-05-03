@@ -50,4 +50,20 @@ precis(m8.1stan_4chains)
 # the resample function computes DIC and WAIC using new samples, you can pass
 # the cores argument to the original map2stan call also.
 
+# visualization
+post = extract.samples(m8.1stan)
+str(post)
 
+pairs(post)
+
+# use the fit model so R will automatically draw parameter names and
+# numeric correlations
+pairs(m8.1stan)
+
+# use the samples
+show(m8.1stan)
+DIC(m8.1stan)
+WAIC(m8.1stan)
+
+# check the chain, diagnostics
+plot(m8.1stan)
