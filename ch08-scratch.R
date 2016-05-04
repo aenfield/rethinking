@@ -82,8 +82,57 @@ pairs(m8.1stan)
 
 # use the samples
 show(m8.1stan)
+stancode(m8.1stan)
 DIC(m8.1stan)
 WAIC(m8.1stan)
 
 # check the chain, diagnostics
 plot(m8.1stan)
+
+# 8.4.3 - taming a wild chain
+# some posterior distributions - like those w/ 'broad, flat' regions - are hard to sample
+# you can see this w/ flat priors, sometimes, for example and w/ little data like here:
+y = c(-1, 1)
+m8.2 = map2stan(
+  alist(
+    y ~ dnorm(mu, sigma),
+    mu <- alpha
+  ),
+  data=list(y=y), start=list(alpha=0,sigma=1),
+  chains=2, iter=4000, warmup=1000
+)
+precis(m8.2)
+plot(m8.2)
+
+# the above example is easily fixed by weakly informed priors - using these priors keeps
+# the chain from having to sample all over the place, and including some crazy high or low
+# priors (since flat/uniform priors are saying all values are equally plausible)
+m8.3 = map2stan(
+  alist(
+    y ~ dnorm(mu, sigma),
+    mu <- alpha,
+    alpha ~ dnorm(1, 10),
+    sigma ~ dcauchy(0, 1)
+  ),
+  data=list(y=y), start=list(alpha=0,sigma=1),
+  chains=2, iter=4000, warmup=1000
+)
+precis(m8.3)
+plot(m8.3)
+# the above mean and sigma are as expected for -1 and 1 data (mu has a mean around zero, and
+# a std dev around 1.4, both of which match the data); the priors are incredibly weak - 
+# they're swamped by just two pieces of data - but w/o the priors we get bad data as m8.2 shows
+
+# overthinking - the Cauchy distribution
+# a very thick-tailed distribution, which means that at any point an extreme value - which is 
+# at least somewhat likely given the thick tails - can overwhelm the previously drawn values,
+# and therefore make the mean and std dev jump... the Cauchy distribution doesn't have a 
+# stable mean or std dev.
+y = rcauchy(1e4, 0, 5)
+mu = sapply(1:length(y), function(i) sum(y[1:i])/i)
+dev.off() # reset par
+plot(mu, type='l')
+# 'half Cauchy' means the distribution is defined, for ex, over positive reals only; you can
+# see this in the stancode(m8.3) w/ the defined sigma variable and 'lower' (see p260 too)
+
+# start w/ 8.4.4
