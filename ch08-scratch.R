@@ -135,4 +135,34 @@ plot(mu, type='l')
 # 'half Cauchy' means the distribution is defined, for ex, over positive reals only; you can
 # see this in the stancode(m8.3) w/ the defined sigma variable and 'lower' (see p260 too)
 
-# start w/ 8.4.4
+# non-identifiable parameters
+y = rnorm(100, mean=0, sd=1)
+
+# non-identifiable params - alpha 1 and alpha 2 - with flat priors (and remember, 'flat priors
+# are flat to infinity')
+m8.4 = map2stan(
+  alist(
+    y ~ dnorm(mu, sigma),
+    mu <- a1 + a2,
+    sigma ~ dcauchy(0,1)
+  ),
+  data=list(y=y), start=list(a1=0,a2=0,sigma=1),
+  chains=2, iter=4000, warmup=1000, cores=4
+)
+precis(m8.4)
+plot(m8.4)
+
+# and with very weakly informed priors
+m8.5 = map2stan(
+  alist(
+    y ~ dnorm(mu, sigma),
+    mu <- a1 + a2,
+    a1 ~ dnorm(0,10),
+    a2 ~ dnorm(0,10),
+    sigma ~ dcauchy(0,1)
+  ),
+  data=list(y=y), start=list(a1=0,a2=0,sigma=1),
+  chains=2, iter=4000, warmup=1000, cores=4
+)
+precis(m8.5)
+plot(m8.5)
