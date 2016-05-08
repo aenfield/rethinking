@@ -32,4 +32,14 @@ logwayspp = log(ways)/10
 plot(logwayspp, H)
 abline(lm(H ~ logwayspp))
 
-# keep going starting at 9.1.2
+# binomial
+# first compare as laid out on p276
+p = list()
+p[[1]] = c(1/4,1/4,1/4,1/4)
+p[[2]] = c(2/6,1/6,1/6,2/6)
+p[[3]] = c(1/6,2/6,2/6,1/6)
+p[[4]] = c(1/8,4/8,2/8,1/8)
+
+# compute expected value of each
+sapply(p, function(p) sum(p*c(0,1,1,2)))
+
