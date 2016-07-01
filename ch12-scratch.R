@@ -41,5 +41,4 @@ m12.2 = map2stan(
 
 # now we have 50 params - we add the shared a and sigma params
 precis(m12.2, depth=2)
-
 compare(m12.1, m12.2)
